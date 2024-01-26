@@ -1,5 +1,3 @@
-require("gun");
-
 !function main() {
   const list = document.querySelector("#list");
   const content = document.querySelector("#content");
@@ -10,6 +8,7 @@ require("gun");
   const titleDialog = document.querySelector("dialog");
   const confirmTitle = titleDialog.querySelector("#confirm-title");
   const titleInput = titleDialog.querySelector("#new-title");
+  const sidebarToggle = document.querySelector("#sidebar-toggle");
 
   const MONTHS = [
     "Jan",
@@ -26,21 +25,17 @@ require("gun");
     "Dec",
   ];
 
-  const db = Gun();
-
-  const notes = db.get("notes");
-
-  const ns = [];
+  const notes = [];
   const nPool = [];
   const idPool = [];
-  var transition = false;
+  var tranotesition = false;
 
-  retrieveNotes(ns);
-  sortNotesByDate(ns);
-  listNotes(ns);
+  fetchNotes(notes);
+  sortNotesByDate(notes);
+  listNotes(notes);
 
   var activeNote;
-  activeNote = ns[0] ??= createNote();
+  activeNote = notes[0] ??= createNote();
 
   display(activeNote);
 
@@ -49,32 +44,30 @@ require("gun");
   create.onclick = (e) => {
     e.preventDefault();
     let note = createNote();
-    ns.unshift(note);
+    notes.unshift(note);
     list.insertAdjacentElement("afterbegin", addHeader(note));
   };
 
   remove.onclick = (e) => {
     e.preventDefault();
-    let index;
-    for (let i = 0; i < ns.length; ++i) {
-      if (ns[i].id != activeNote.id) continue;
-      index = i;
+    for (let i = 0; i < notes.length; ++i) {
+      if (notes[i].id != activeNote.id) continue;
+      nPool.push(notes.splice(i, 1)[0]);
       break;
     }
     deleteNote(activeNote);
     deactive(activeNote);
     hide(activeNote);
-    nPool.push(ns.splice(index, 1)[0]);
-    activeNote = ns[0] ??= createNote();
+    activeNote = notes[0] ??= createNote();
     addHeader(activeNote);
     setActive(activeNote);
-    transition = true;
+    tranotesition = true;
   };
 
   save.onclick = (e) => {
     e.preventDefault();
     saveNote(activeNote);
-    sortNotesByDate(ns);
+    sortNotesByDate(notes);
     list.insertAdjacentElement("afterbegin", addHeader(activeNote));
   };
 
@@ -94,6 +87,11 @@ require("gun");
     titleInput.value = null;
   };
 
+  sidebarToggle.onclick = (e) => {
+    e.preventDefault();
+    list.style.display = list.style.display == "block" ? "none" : "block";
+  };
+
   const deferBuffering = debounce(
     () => {
       activeNote.content = content.innerHTML;
@@ -103,8 +101,8 @@ require("gun");
   const observer = new MutationObserver(() => {
     deferBuffering();
     if (activeNote.modified) return;
-    if (transition) {
-      transition = false;
+    if (tranotesition) {
+      tranotesition = false;
       return;
     }
     activeNote.modified = true;
@@ -138,7 +136,7 @@ require("gun");
       deactive(activeNote);
       setActive(note);
       activeNote = note;
-      transition = true;
+      tranotesition = true;
     };
     return noteHeader;
   }
@@ -183,7 +181,8 @@ require("gun");
   function saveNote(note) {
     note.time = new Date().getTime();
     note.modified = false;
-    notes.get(note.id).put(JSON.stringify(note));
+    note.content = note.content;
+    localStorage.setItem(note.id, JSON.stringify(note));
   }
 
   function createNote() {
@@ -197,12 +196,7 @@ require("gun");
   }
 
   function deleteNote(note) {
-    let n = notes.get(note.id);
-    n.once((data) => {
-      if (!data) return false;
-      n.put(null);
-      return true;
-    });
+    localStorage.removeItem(note.id);
   }
 
   function copyNote(src, dest) {
@@ -237,26 +231,23 @@ require("gun");
     content.innerHTML = note.content;
   }
 
-  function retrieveNotes(ns) {
-    ns.splice(0);
-    notes.map().once((data, key) => {
-      if (data == null) {
-        idPool.push(key);
-        return;
-      }
-      ns.push(JSON.parse(data));
-    });
-    return ns;
-  }
-
-  function sortNotesByDate(ns) {
-    ns.sort((a, b) => b.time - a.time);
-    return ns;
-  }
-
-  function listNotes(ns) {
-    for (let i = ns.length - 1; i >= 0; --i) {
-      addHeader(ns[i]);
+  function fetchNotes(notes) {
+    notes.splice(0);
+    const l = localStorage.length;
+    for (let i = 0; i < l; ++i) {
+      notes[i] = JSON.parse(localStorage.getItem(localStorage.key(i)));
     }
+    return notes;
+  }
+
+  function listNotes(notes) {
+    const l = notes.length;
+    for (let i = l - 1; i >= 0; --i) {
+      addHeader(notes[i]);
+    }
+  }
+
+  function sortNotesByDate(notes) {
+    return notes.sort((a, b) => b.time - a.time);
   }
 }();

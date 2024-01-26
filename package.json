@@ -6,14 +6,12 @@
   "scripts": {
     "build": "esbuild src/main.js --bundle --minify --outfile=build/out.js",
     "build-dev": "esbuild src/main.js --bundle --outfile=build/out.js",
-    "serve": "esbuild --servedir=."
+    "serve": "esbuild --servedir=.",
+    "start": "npm run build-dev; npm run serve;"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "gun": "^0.2020.1239"
-  },
   "devDependencies": {
     "esbuild": "^0.19.11"
   }
